@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from app import app
 from app.helper.SecretManager import get_secrets
+from app.helper.AuthHelper import token_required
 
 COGNITO_REGION =  get_secrets()['COGNITO_REGION']
 
@@ -16,6 +17,7 @@ table = dynamodb.Table('Feedback')
 class FeedbackContoller:
 
     @app.route('/submit-feedback', methods=['POST'])
+    @token_required
     def submit_feedback():
         data = request.get_json()  # Expecting JSON data
 
@@ -48,6 +50,7 @@ class FeedbackContoller:
         
 
 @app.route('/get-all-feedback', methods=['GET'])
+@token_required
 def get_all_feedback():
     try:
         feedback_items = []

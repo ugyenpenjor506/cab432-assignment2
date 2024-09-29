@@ -11,3 +11,8 @@ aws dynamodb create-table \
     --key-schema AttributeName=FeedbackID,KeyType=HASH \
     --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
     --tags Key=qut-username,Value=n11435542@qut.edu.au Key=purpose,Value=assignment2
+
+
+creteing parameter store
+
+aws ssm put-parameter --name "/n11435542/llmchatbot" --value "chatbot.auth.ap-southeast-2.amazoncognito.com" --type String

@@ -25,18 +25,17 @@ class ApiService:
         return result
     
     def openai_api(self, user_input, conversation_id, query_id):
-        
         try:
             # Setup API key securely from environment variable
             openai.api_key = api_key
 
             if openai.api_key is None:
-                return jsonify({"status": "error", "code": 500, "message": "OPENAI_API_KEY environment variable is not set."}), 500
+                return {"status": "error", "code": 500, "message": "OPENAI_API_KEY environment variable is not set."}
 
             # Load documents from a file
             file_path = "experiment-dataset.pdf"
             if not os.path.exists(file_path):
-                return jsonify({"status": "error", "code": 404, "message": f"File not found: {file_path}"}), 404
+                return {"status": "error", "code": 404, "message": f"File not found: {file_path}"}
 
             documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
 
@@ -57,28 +56,31 @@ class ApiService:
                 response_text = str(response)
 
                 # Introduce a CPU-intensive task related to query processing
-                cpu_result = apiService.cpu_intensive_query_processing(response_text)
+                cpu_result = self.cpu_intensive_query_processing(response_text)
 
                 line_width = 70
                 wrapped_response = textwrap.fill(response_text, width=line_width)
                 
+                # Store the response in the database
                 databaseService.create_response(conversation_id, query_id, response_text)
-                return jsonify({
+
+                # Return a dictionary (JSON-serializable object) instead of jsonify
+                return {
                     "status": "success",
                     "code": 200,
                     "response": wrapped_response,
                     "cpu_result": cpu_result
-                }), 200
+                }
             else:
-                return jsonify({"status": "error", "code": 500, "message": "Query engine is not initialized"}), 500
+                return {"status": "error", "code": 500, "message": "Query engine is not initialized"}
 
         except ValueError as e:
-            return jsonify({"status": "error", "code": 500, "message": str(e)}), 500
+            return {"status": "error", "code": 500, "message": str(e)}
 
         except Exception as e:
             # General exception handler for unexpected errors
-            return jsonify({"status": "error", "code": 500, "message": f"An unexpected error occurred: {str(e)}"}), 500
-        return None
+            return {"status": "error", "code": 500, "message": f"An unexpected error occurred: {str(e)}"}
+
 
 
 apiService = ApiService()   
