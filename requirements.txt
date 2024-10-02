@@ -24,4 +24,6 @@ flask-cors
 python-dotenv
 cryptography
 redis
-
+boto3
+google-auth
+Flask-SocketIO
