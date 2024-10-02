@@ -140,7 +140,6 @@ class UserController:
             
     @app.route('/login', methods=['POST'])
     def login():
-        SECRET_KEY = 'hg54376*6'
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')

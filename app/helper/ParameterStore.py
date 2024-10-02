@@ -7,6 +7,7 @@ ssm = boto3.client('ssm', region_name=COGNITO_REGION)  # Update the region if ne
 
 # Parameter Store key for the Cognito domain
 PARAMETER_NAME_DOMAIN = "/n11435542/cognito-domain"
+PARAMETER_NAME_DBHOST = "/n11435542/db-host"
 
 # Function to retrieve the Cognito domain from Parameter Store
 def get_cognito_domain():
@@ -19,10 +20,10 @@ def get_cognito_domain():
     except Exception as e:
         raise RuntimeError(f"Error retrieving Cognito domain: {str(e)}")
     
-# Function to retrieve the Callback url from Parameter Store
-def get_cognito_domain():
+# Function to retrieve the db host url from Parameter Store
+def get_db_host():
     try:
-        response = ssm.get_parameter(Name=PARAMETER_NAME_DOMAIN)
+        response = ssm.get_parameter(Name=PARAMETER_NAME_DBHOST)
         cognito_domain = response['Parameter']['Value']
         return cognito_domain
     except ssm.exceptions.ParameterNotFound:

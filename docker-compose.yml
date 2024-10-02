@@ -1,100 +1,41 @@
-# services:
-#   db:
-#     image: mysql:8.0
-#     container_name: mysql_db
-#     environment:
-#       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-#       MYSQL_DATABASE: ${MYSQL_DATABASE}
-#     ports:
-#       - "3307:3306"
-#     volumes:
-#       - db_data:/var/lib/mysql
-#     networks:
-#       - llmapp-network
-#     healthcheck:
-#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
+# Use an official MySQL image as the base image
+FROM mysql:8.0
 
-#   web:
-#     build: .
-#     container_name: llm_flask_app
-#     command: python3 main.py
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#     volumes:
-#       - .:/LLMAPP
-#     ports:
-#       - "5005:5005"
-#     environment:
-#       - FLASK_ENV=development
-#       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#       - MYSQL_DATABASE=${MYSQL_DATABASE}
-#       - MYSQL_HOST=db  # Ensure this matches the service name of the MySQL container
-#       - OPENAI_API_KEY=${OPENAI_API_KEY}  # Pass the OpenAI API key
-#     networks:
-#       - llmapp-network
+# Set environment variables for MySQL
+ENV MYSQL_ROOT_PASSWORD=joker!@
+ENV MYSQL_DATABASE=chatbot_db
+ENV MYSQL_USER=yongdrachen
+ENV MYSQL_PASSWORD=joker!@
 
-# volumes:
-#   db_data:
+# Expose the MySQL port
+EXPOSE 3306
 
-# networks:
-#   llmapp-network:
-#     driver: bridge
+# Copy a custom MySQL configuration file if needed (optional)
+# COPY ./my.cnf /etc/mysql/my.cnf
+
+# Add initialization scripts if required
+# COPY ./init.sql /docker-entrypoint-initdb.d/
+
+# Start MySQL service (this is handled by the official image)
+CMD ["mysqld"]
+
+
+; ********************LOCALHOST********************
+; MYSQL_ROOT_PASSWORD=17385924Ugyen
+; MYSQL_DATABASE=chatbot_db
+; MYSQL_USER=root
+; MYSQL_PASSWORD=17385924Ugyen
+; MYSQL_HOST=127.0.0.1
+; OPENAI_API_KEY=sk-L2LV1RpDt10WVpXZ3FgVDmaaOKN--vzRTTd4YwHXD5T3BlbkFJeeRkebI8G7DCf9gNQB2AH_UMcO1wVeoJySwtObmn8A
+
+; *************************CLOUD**********************
 
 
 
 
-
-
-version: '3.8'
-
-services:
-  db:
-    image: mysql:8.0
-    container_name: mysql_db
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-    ports:
-      - "3307:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - llmapp-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  web:
-    image: 194722437060.dkr.ecr.ap-southeast-2.amazonaws.com/cab432-assignmen1-llmapp:latest
-    container_name: llm_flask_app
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "5005:5005"
-    environment:
-      - FLASK_ENV=production
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_HOST=db
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    networks:
-      - llmapp-network
-
-volumes:
-  db_data:
-
-networks:
-  llmapp-network:
-    driver: bridge
-
-
-
-
-
+MYSQL_ROOT_PASSWORD=joker506
+MYSQL_DATABASE=chatbot_db
+MYSQL_USER=root
+MYSQL_PASSWORD=joker506
+MYSQL_HOST=13.210.71.105
+OPENAI_API_KEY=sk-L2LV1RpDt10WVpXZ3FgVDmaaOKN--vzRTTd4YwHXD5T3BlbkFJeeRkebI8G7DCf9gNQB2AH_UMcO1wVeoJySwtObmn8A

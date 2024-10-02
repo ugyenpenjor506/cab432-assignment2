@@ -3,15 +3,16 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
-from dotenv import load_dotenv
-load_dotenv()
+from app.helper.SecretManager import get_secrets
+from app.helper.ParameterStore import get_db_host
 
-# Get database connection details from environment variables
-db_user = os.getenv('MYSQL_USER')
-db_password = os.getenv('MYSQL_PASSWORD')
-db_host = os.getenv('MYSQL_HOST')
-db_name = os.getenv('MYSQL_DATABASE')
+# Retrieve the db credentials from secret manager using helper function
+db_user = get_secrets()['MYSQL_USER']
+db_password = get_secrets()['MYSQL_PASSWORD']
+db_name = get_secrets()['MYSQL_DATABASE']
 
+ # Retrieve the db host from Parameter Store using the helper function
+db_host = get_db_host()
 
 con = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:3306/{db_name}"
 

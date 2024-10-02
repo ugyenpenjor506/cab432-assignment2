@@ -15,4 +15,14 @@ aws dynamodb create-table \
 
 creteing parameter store
 
-aws ssm put-parameter --name "/n11435542/llmchatbot" --value "chatbot.auth.ap-southeast-2.amazoncognito.com" --type String
+aws ssm put-parameter --name "/n11435542/cognito-domain" --value "chatbot.auth.ap-southeast-2.amazoncognito.com" --type String --region ap-southeast-2
+aws ssm put-parameter --name "/n11435542/callback-url" --value "http://localhost:5005/callback" --type String --region ap-southeast-2
+
+aws ssm put-parameter --name "/n11435542/db-host" --value "52.63.214.147" --type String --region ap-southeast-2
+
+
+
+aws cognito-idp admin-get-user \
+    --user-pool-id ap-southeast-2_fU3VfYExo \
+    --username 
+ugyenp>

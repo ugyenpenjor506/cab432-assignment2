@@ -7,10 +7,10 @@ from llama_index.llms.openai import OpenAI
 import textwrap
 from flask import jsonify
 from app.service.DatabaseService import DatabaseService
+from app.helper.SecretManager import get_secrets
 
-from dotenv import load_dotenv
-load_dotenv()
-api_key = os.getenv('OPENAI_API_KEY')
+
+OPENAI_API_KEY = get_secrets()['OPENAI_API_KEY']
 
 class ApiService:
     
@@ -27,7 +27,7 @@ class ApiService:
     def openai_api(self, user_input, conversation_id, query_id):
         try:
             # Setup API key securely from environment variable
-            openai.api_key = api_key
+            openai.api_key = OPENAI_API_KEY
 
             if openai.api_key is None:
                 return {"status": "error", "code": 500, "message": "OPENAI_API_KEY environment variable is not set."}
