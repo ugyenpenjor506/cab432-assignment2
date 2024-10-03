@@ -18,11 +18,11 @@ class FeedbackContoller:
 
     @app.route('/submit-feedback', methods=['POST'])
     @token_required
-    def submit_feedback():
+    def submit_feedback(current_user):
         data = request.get_json()  # Expecting JSON data
 
         # Extract user feedback from the request
-        user_id = data.get('UserID')
+        user_id = current_user
         rating = data.get('Rating')
         comments = data.get('Comments')
 
@@ -51,7 +51,7 @@ class FeedbackContoller:
 
 @app.route('/get-all-feedback', methods=['GET'])
 @token_required
-def get_all_feedback():
+def get_all_feedback(current_user):
     try:
         feedback_items = []
         response = table.scan()

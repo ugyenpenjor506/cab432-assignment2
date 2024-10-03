@@ -6,9 +6,9 @@ from app import engine
     
 class UserProfile(db.Model):
     __tablename__ = 'tbl_user_profile_picture'
-    PictureID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ProfileID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     UserID = db.Column(db.String(255), nullable=False)
-    ProfilePicURL = db.Column(db.String(255), nullable=False)
+    ProfileName = db.Column(db.String(255), nullable=False)
     UploadedAt = db.Column(db.DateTime, server_default=db.func.now())
 
 class Conversation(db.Model):

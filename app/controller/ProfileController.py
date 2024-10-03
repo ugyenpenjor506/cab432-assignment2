@@ -21,13 +21,21 @@ BUCKET_NAME = 'n1234567-assignment2'
 
 class ProfileController:
     
-    @app.route('/upload-profile-picture/<int:user_id>', methods=['POST'])
+    @app.route('/upload-profile-picture', methods=['POST'])
     @token_required  # Protect this route with the token
-    def upload_profile_picture(user_id):
-        profile_pic = request.files['profile_pic']  # Get the uploaded file from form data
+    def upload_profile_picture(current_user):
+        # Get the uploaded file from form data
+        if 'profile_pic' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+
+        profile_pic = request.files['profile_pic']
         
+        if profile_pic.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
         if profile_pic:
-            file_name = secure_filename(f"user_{user_id}_profile.jpg")
+            # Use the current_user (from token) to create a unique file name
+            file_name = secure_filename(f"user_{current_user}_profile.jpg")
             try:
                 # Generate the presigned URL for uploading to S3
                 presigned_url = s3_client.generate_presigned_url(
@@ -41,8 +49,7 @@ class ProfileController:
                 )
 
                 # Upload the file using the presigned URL
-                files = {'file': (file_name, profile_pic.read(), profile_pic.content_type)}
-                response = requests.put(presigned_url, data=files['file'][1], headers={
+                response = requests.put(presigned_url, data=profile_pic.read(), headers={
                     'Content-Type': profile_pic.content_type
                 })
                 
@@ -54,12 +61,12 @@ class ProfileController:
                 return jsonify({'error': str(e)}), 500
         else:
             return jsonify({'error': 'No file provided'}), 400
+
         
-        
-    @app.route('/download-profile-picture/<int:user_id>', methods=['GET'])
+    @app.route('/download-profile-picture', methods=['GET'])
     @token_required  # Protect this route with the token
-    def download_profile_picture(user_id):
-        file_name = secure_filename(f"user_{user_id}_profile.jpg")  # Construct the file name based on user_id
+    def download_profile_picture(current_user):
+        file_name = secure_filename(f"user_{current_user}_profile.jpg")  # Construct the file name based on user_id
     
         try:
             # Generate the presigned URL for downloading the profile picture from S3

@@ -31,7 +31,7 @@ class UserController:
                 response_type = "code"
                 client_id = COGNITO_CLIENT_ID
                 redirect_uri = "http://localhost:5005/callback"  # Your callback URI
-                scope = "openid email"  # Minimal scope for Google login
+                scope = "openid email profile"  # Minimal scope for Google login
                 prompt = "login"  # Force Google login
 
                 # Construct the login URL with the prompt=login parameter
@@ -43,7 +43,6 @@ class UserController:
             except Exception as e:
                 return f"Error: {str(e)}", 500
        
-
 
     @app.route('/callback')
     def callback():
@@ -69,14 +68,10 @@ class UserController:
                 id_token = tokens['id_token']
                 decoded_token = jwt.decode(id_token, options={"verify_signature": False})
 
-                # Prepare response for API usage (avoid showing in browser directly)
-                return jsonify({
-                    "message": "Login with Google successful",
-                    "email": decoded_token.get('email'),
-                    "user_id": decoded_token.get('sub'),
-                    "username": decoded_token.get('cognito:username'),
-                    "token": id_token
-                }), 200
+                # Redirect to front-end with token as a query parameter
+                redirect_url = f"http://localhost:3000/home?token={id_token}&username={decoded_token.get('cognito:username')}"
+                return redirect(redirect_url)
+
             else:
                 return jsonify({"error": "Failed to retrieve token"}), 500
 
@@ -87,13 +82,14 @@ class UserController:
     @app.route('/create_user', methods=['POST'])
     def create_user():
         data = request.get_json()
-        username = data.get('username')  # This should be a unique username (not an email)
+        username = data.get('username')  # Unique username (not an email)
         email = data.get('email')        # The user's email
         password = data.get('password')
+        fullname = data.get('fullname')  # Capture full name from the request
 
-        if not username or not password or not email:
+        if not username or not password or not email or not fullname:
             return jsonify({
-                "error": "Username, email, and password are required",
+                "error": "Username, email, password, and fullname are required",
                 "status": "fail",
                 "code": 400
             }), 400
@@ -108,6 +104,10 @@ class UserController:
                     {
                         'Name': 'email',
                         'Value': email
+                    },
+                    {
+                        'Name': 'name',  
+                        'Value': fullname
                     }
                 ]
             )
@@ -136,7 +136,7 @@ class UserController:
                 "status": "fail",
                 "code": 500
             }), 500
-            
+
             
     @app.route('/login', methods=['POST'])
     def login():
@@ -146,7 +146,7 @@ class UserController:
 
         if not username or not password:
             return jsonify({
-                "error": "Username/email and password are required",
+                "error": "Username and password are required",
                 "status": "fail",
                 "code": 400
             }), 400
@@ -155,7 +155,7 @@ class UserController:
             # Initiating Auth using USER_PASSWORD_AUTH flow
             response = cognito_client.initiate_auth(
                 ClientId=COGNITO_CLIENT_ID,
-                AuthFlow='USER_PASSWORD_AUTH',  # Using USER_PASSWORD_AUTH flow
+                AuthFlow='USER_PASSWORD_AUTH',
                 AuthParameters={
                     'USERNAME': username,
                     'PASSWORD': password
@@ -169,6 +169,7 @@ class UserController:
 
             user_id = decoded_token.get('sub')  # Extract the user ID (sub) from the token
             extracted_username = decoded_token.get('cognito:username')  # Extract the username
+            name = decoded_token.get('name')  # Extract the name from the token (or 'given_name' depending on your setup)
 
             return jsonify({
                 "message": "Login successful",
@@ -176,15 +177,62 @@ class UserController:
                 "code": 200,
                 "token": id_token,
                 "user_id": user_id,  # Include the user ID in the response
-                "username": extracted_username  # Include the username from the decoded token
+                "username": extracted_username,  # Include the username from the decoded token
+                "name": name  # Include the name from the decoded token
             }), 200
 
         except cognito_client.exceptions.NotAuthorizedException:
+            # Handle incorrect username or password
             return jsonify({
-                "error": "Invalid username/email or password",
+                "error": "Invalid username or password",
                 "status": "fail",
                 "code": 401
             }), 401
+        except Exception as e:
+            # Handle any other errors
+            return jsonify({
+                "error": str(e),
+                "status": "fail",
+                "code": 500
+            }), 500
+            
+    @app.route('/get_all_users', methods=['GET'])
+    def get_all_users():
+        try:
+            # Fetch all users from the Cognito User Pool
+            response = cognito_client.list_users(
+                UserPoolId=COGNITO_POOL_ID
+            )
+
+            # List to hold user details (name and user ID)
+            users = []
+
+            # Loop through the list of users
+            for user in response['Users']:
+                full_name = None
+                user_id = None
+
+                # Loop through user attributes to get 'name' and 'sub' (user ID)
+                for attribute in user['Attributes']:
+                    if attribute['Name'] == 'name':  # 'name' is the full name attribute
+                        full_name = attribute['Value']
+                    if attribute['Name'] == 'sub':  # 'sub' is the user ID
+                        user_id = attribute['Value']
+                
+                # Add user details to the list if both name and user ID are found
+                if full_name and user_id:
+                    users.append({
+                        "full_name": full_name,
+                        "user_id": user_id
+                    })
+
+            return jsonify({
+                "message": "Users fetched successfully",
+                "status": "success",
+                "code": 200,
+                "users": users  # Return the list of users with full name and user ID
+            }), 200
+
         except Exception as e:
             return jsonify({
                 "error": str(e),
