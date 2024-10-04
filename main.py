@@ -6,10 +6,10 @@ from app import app
 import time  # For
 
 # Enable CORS for all routes
-CORS(app)  # You can specify specific origins like CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app)  
 
 # Set up Redis for progress tracking
-cache = redis.StrictRedis(host='localhost', port=6379, decode_responses=True)
+cache = redis.StrictRedis(host='172.31.3.87', port=6379, decode_responses=True)
 
 # Set up SocketIO for WebSocket communication
 socketio = SocketIO(app, cors_allowed_origins="*")  # Allow CORS for all origins. Replace "*" with specific origin if needed.
