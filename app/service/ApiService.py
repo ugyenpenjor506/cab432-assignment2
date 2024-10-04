@@ -1,87 +1,118 @@
 import os
 import openai
-from llama_index.core import Document
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
-from llama_index.core.service_context import ServiceContext
-from llama_index.llms.openai import OpenAI
 import textwrap
+import PyPDF2  # Import the PyPDF2 library
 from flask import jsonify
 from app.service.DatabaseService import DatabaseService
 from app.helper.SecretManager import get_secrets
+from langchain_openai import OpenAIEmbeddings  # For OpenAI embeddings
+from langchain_community.vectorstores import Chroma  # For Chroma vector store
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
+from langchain.chains import RetrievalQA
+from langchain.llms import OpenAI
+from langchain.chains.question_answering import load_qa_chain
 
 
+# Retrieve OpenAI API Key securely from environment or secret manager
 OPENAI_API_KEY = get_secrets()['OPENAI_API_KEY']
+openai.api_key = OPENAI_API_KEY
 
 class ApiService:
     
     @staticmethod
     def cpu_intensive_query_processing(response_text):
-        # Simulating a CPU-intensive text processing task
+        """Simulate a CPU-intensive text processing task"""
         result = 0
         for _ in range(5000):
-            # Perform complex string manipulations or other CPU-intensive operations
             result += sum(ord(char) for char in response_text)
             response_text = response_text[::-1]  # Reverse the text as a mock operation
         return result
-    
+
     def openai_api(self, user_input, conversation_id, query_id):
         try:
-            # Setup API key securely from environment variable
-            openai.api_key = OPENAI_API_KEY
-
+            # Ensure the OpenAI API key is set
             if openai.api_key is None:
                 return {"status": "error", "code": 500, "message": "OPENAI_API_KEY environment variable is not set."}
 
-            # Load documents from a file
+            # Load and process documents from a PDF file
             file_path = "experiment-dataset.pdf"
             if not os.path.exists(file_path):
                 return {"status": "error", "code": 404, "message": f"File not found: {file_path}"}
 
-            documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+            # Step 1: Extract text from the PDF
+            text = self.extract_text_from_pdf(file_path)
+            documents = self.prepare_documents(text)
 
-            # Create a document by concatenating text from all loaded documents
-            document = Document(text="\n\n".join([doc.text for doc in documents]))
+            # Step 2: Create embeddings using Chroma and LangChain
+            vector_store = self.create_embeddings(documents)
 
-            # Initialize service context and query engine
-            llm = OpenAI(model="gpt-3.5-turbo", temperature=0.1)
-            service_context = ServiceContext.from_defaults(
-                llm=llm, embed_model="local:BAAI/bge-small-en-v1.5"
-            )
+            # Step 3: Build the LangChain-based Retrieval-Augmented Generation (RAG) chatbot
+            qa_chain = self.build_rag_chatbot(vector_store)
 
-            index = VectorStoreIndex.from_documents([document], service_context=service_context)
-            query_engine = index.as_query_engine()
+            # Step 4: Get the response from the chatbot
+            response = qa_chain.run(user_input)
+            response_text = str(response)
 
-            if query_engine:
-                response = query_engine.query(user_input)
-                response_text = str(response)
+            # Perform CPU-intensive processing
+            cpu_result = self.cpu_intensive_query_processing(response_text)
 
-                # Introduce a CPU-intensive task related to query processing
-                cpu_result = self.cpu_intensive_query_processing(response_text)
+            # Format the response text for better readability
+            line_width = 70
+            wrapped_response = textwrap.fill(response_text, width=line_width)
 
-                line_width = 70
-                wrapped_response = textwrap.fill(response_text, width=line_width)
-                
-                # Store the response in the database
-                databaseService.create_response(conversation_id, query_id, response_text)
+            # Store the response in the database
+            databaseService.create_response(conversation_id, query_id, response_text)
 
-                # Return a dictionary (JSON-serializable object) instead of jsonify
-                return {
-                    "status": "success",
-                    "code": 200,
-                    "response": wrapped_response,
-                    "cpu_result": cpu_result
-                }
-            else:
-                return {"status": "error", "code": 500, "message": "Query engine is not initialized"}
+            # Return the formatted response and the result of CPU-intensive processing
+            return {
+                "status": "success",
+                "code": 200,
+                "response": wrapped_response,
+                "cpu_result": cpu_result
+            }
 
         except ValueError as e:
             return {"status": "error", "code": 500, "message": str(e)}
 
         except Exception as e:
-            # General exception handler for unexpected errors
             return {"status": "error", "code": 500, "message": f"An unexpected error occurred: {str(e)}"}
 
+    def extract_text_from_pdf(self, pdf_path):
+        """Extract text from a PDF file"""
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text()
+        return text
 
+    def prepare_documents(self, text):
+        """Split the extracted text into chunks and convert them into Document objects"""
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        chunks = text_splitter.split_text(text)
+        documents = [Document(page_content=chunk) for chunk in chunks]
+        return documents
 
-apiService = ApiService()   
+    def create_embeddings(self, documents):
+        """Create vector embeddings using OpenAI and Chroma"""
+        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        vector_store = Chroma.from_documents(documents, embeddings)
+        return vector_store
+
+    def build_rag_chatbot(self, vector_store):
+        """Build the Retrieval-Augmented Generation (RAG) chatbot using LangChain"""
+        # Initialize the OpenAI LLM
+        llm = OpenAI(temperature=0.1, openai_api_key=OPENAI_API_KEY)
+
+        # Create the document combination chain for question answering
+        combine_documents_chain = load_qa_chain(llm, chain_type="stuff")
+
+        # Build the RAG-based RetrievalQA chain
+        qa_chain = RetrievalQA(retriever=vector_store.as_retriever(), combine_documents_chain=combine_documents_chain)
+
+        return qa_chain
+
+# Instantiate the services
+apiService = ApiService()
 databaseService = DatabaseService()
